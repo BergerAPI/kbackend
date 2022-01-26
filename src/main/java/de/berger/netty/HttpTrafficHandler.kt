@@ -25,6 +25,7 @@ class HttpTrafficHandler(private val manager: BackendManager) : ChannelInboundHa
                     println("[REQUEST] ${msg.method()} ${msg.uri()}")
 
                     response.headers().add(HttpHeaderNames.CONTENT_TYPE, it.type.contentType)
+                    it.headers.forEach { (key, value) -> response.headers().add(key, value) }
 
                     ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE)
                 }

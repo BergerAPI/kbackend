@@ -1,10 +1,10 @@
 package de.berger
 
+import de.berger.cookie.Cookie
 import de.berger.netty.BackendServerInitializer
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioServerSocketChannel
-import io.netty.handler.codec.http.HttpResponseStatus
 
 data class Test(val name: String, val age: Int)
 
@@ -13,13 +13,20 @@ data class Test(val name: String, val age: Int)
 class TestListener : Controller() {
 
     @GET("/dog")
-    fun dog(request: Request, @Query("age") age: Int, @Query("name") name: String): Response = json(Test(name, age))
+    fun dog(request: Request, @Query("age") age: Int, @Query("name") name: String): Response = json(
+        Test(name, age), headers = mapOf(
+            Cookie.createCookie("test", "test")
+        )
+    )
 
     @GET("/cat")
-    fun cat(request: Request): Response = json(Test("Cat", 69))
+    fun cat(request: Request): Response = redirect("https://google.com/")
+
+    @POST("/parrot")
+    fun parrot(request: Request): Response = json(Test(request.body, 1337))
 
     @GET("/parrot")
-    fun parrot(request: Request): Response = json(Test("Parrot", 1337))
+    fun parrotGet(request: Request): Response = json(Test(request.body, 17))
 
 }
 

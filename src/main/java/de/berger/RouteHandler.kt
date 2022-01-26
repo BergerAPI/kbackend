@@ -16,7 +16,12 @@ enum class ResponseType(val contentType: String) {
 /**
  * This is what we return to the client.
  */
-open class Response(val status: HttpResponseStatus, val body: String, val type: ResponseType)
+open class Response(
+    val status: HttpResponseStatus,
+    val body: String,
+    val type: ResponseType,
+    val headers: Map<String, String>
+)
 
 /**
  * This is what we get from the client.
@@ -30,6 +35,15 @@ data class Request(
 )
 
 /**
+ * This is a route that handles a request onto a specific path.
+ */
+data class Route(
+    val method: HttpMethod,
+    val path: String,
+    val handler: (Request) -> Response
+)
+
+/**
  * A listener is a class that can have multiple routes.
  */
 abstract class Controller
@@ -37,14 +51,32 @@ abstract class Controller
 /**
  * Generating a JsonResponse (the fast way)
  */
-fun json(value: Any, status: HttpResponseStatus = HttpResponseStatus.OK): Response =
-    Response(status, Gson().toJson(value), ResponseType.JSON)
+fun json(
+    value: Any,
+    status: HttpResponseStatus = HttpResponseStatus.OK,
+    headers: Map<String, String> = emptyMap()
+): Response =
+    Response(status, Gson().toJson(value), ResponseType.JSON, headers)
 
 /**
  * Generating a plain text response (the fast way)
  */
-fun plain(value: String, status: HttpResponseStatus = HttpResponseStatus.OK): Response =
-    Response(status, value, ResponseType.TEXT)
+fun plain(
+    value: String,
+    status: HttpResponseStatus = HttpResponseStatus.OK,
+    headers: Map<String, String> = emptyMap()
+): Response =
+    Response(status, value, ResponseType.TEXT, headers)
+
+/**
+ * Redirecting the user to another page.
+ */
+fun redirect(
+    path: String,
+    status: HttpResponseStatus = HttpResponseStatus.FOUND,
+    headers: Map<String, String> = emptyMap()
+): Response =
+    Response(status, "", ResponseType.TEXT, headers + mapOf("Location" to path))
 
 /**
  * Controllers can have a predefined prefix
@@ -66,12 +98,12 @@ annotation class DELETE(val path: String)
 annotation class HEAD(val path: String)
 annotation class OPTIONS(val path: String)
 
-class RouteHandler(val manager: BackendManager) {
+class RouteHandler(private val manager: BackendManager) {
 
     /**
      * All our registered routes
      */
-    private var routes: Map<String, (Request) -> Response> = mapOf()
+    private var routes: ArrayList<Route> = arrayListOf()
 
     /**
      * Checking if an annotation is one of ours
@@ -119,7 +151,7 @@ class RouteHandler(val manager: BackendManager) {
      * This runs the code on the server and returns a response.
      */
     fun getResponse(req: Request): Response {
-        val route = routes[req.path]
+        val route = routes.find { it.method == req.method && it.path == req.path }
 
         // Running the middleware
         val middlewareResponse = this.manager.middleware.preRequest(req)
@@ -127,14 +159,14 @@ class RouteHandler(val manager: BackendManager) {
         if (middlewareResponse.failed)
             return json(middlewareResponse, middlewareResponse.status)
 
-        return route?.invoke(req) ?: Response(HttpResponseStatus.NOT_FOUND, "Not found", ResponseType.TEXT)
+        return route?.handler?.invoke(req) ?: Response(HttpResponseStatus.NOT_FOUND, "Not found", ResponseType.TEXT, emptyMap())
     }
 
     /**
      * Register a route.
      */
     fun lazyRoute(path: String, handler: (Request) -> Response) {
-        routes = routes + (path to handler)
+        routes.add(Route(HttpMethod.GET, path, handler))
     }
 
     /**
@@ -151,7 +183,7 @@ class RouteHandler(val manager: BackendManager) {
                 evaluateAnnotation(annotation) != null
             }
         }.forEach {
-            val (path, _) = it.annotations.first { annotation ->
+            val (path, method) = it.annotations.first { annotation ->
                 evaluateAnnotation(annotation) != null
             }.let(::evaluateAnnotation)!!
 
@@ -172,7 +204,7 @@ class RouteHandler(val manager: BackendManager) {
                 }
             }
 
-            routes = routes + ((prefix + path) to { req ->
+            routes.add(Route(method, (prefix + path)) { req ->
                 // if we have queries, we need to add them to the request
                 if (queries.isNotEmpty()) {
                     val queryMap = queries.associate { mapIt -> mapIt.first to req.queries[mapIt.first] }
@@ -207,7 +239,8 @@ class RouteHandler(val manager: BackendManager) {
                         Response(
                             HttpResponseStatus.BAD_REQUEST,
                             "Missing query parameters: ${failedQuery.joinToString(", ")}",
-                            ResponseType.TEXT
+                            ResponseType.TEXT,
+                            emptyMap()
                         )
                     else {
                         try {
@@ -216,7 +249,8 @@ class RouteHandler(val manager: BackendManager) {
                             Response(
                                 HttpResponseStatus.INTERNAL_SERVER_ERROR,
                                 "Invocation Error: ${e.message}",
-                                ResponseType.TEXT
+                                ResponseType.TEXT,
+                                emptyMap()
                             )
                         }
                     }
