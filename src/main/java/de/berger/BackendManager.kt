@@ -4,6 +4,7 @@ import de.berger.netty.BackendServerInitializer
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioServerSocketChannel
+import io.netty.handler.codec.http.HttpResponseStatus
 
 data class Test(val name: String, val age: Int)
 
@@ -22,6 +23,14 @@ class TestListener : Controller() {
 
 }
 
+/**
+ * This middleware always fails, so we can test the middleware handling.
+ */
+class AutoFailMiddleware : Middleware {
+    override fun preRequest(request: Request): MiddlewareResponse =
+        MiddlewareResponse(true, "This is a middleware that always fails", HttpResponseStatus.BAD_REQUEST)
+}
+
 // Bootstrap
 fun main() {
     val backend = BackendManager()
@@ -31,6 +40,7 @@ fun main() {
     }
 
     backend.routing.initializeController(TestListener())
+    backend.middleware.addMiddleware(AutoFailMiddleware())
 
     backend.run(3000)
 }
@@ -41,14 +51,14 @@ fun main() {
 class BackendManager {
 
     /**
-     * Http constants
-     */
-    var port = 3000
-
-    /**
      * Handling our routes
      */
-    val routing = RouteHandler()
+    val routing = RouteHandler(this)
+
+    /**
+     * Handling our middlewares
+     */
+    val middleware = MiddlewareHandler()
 
     /**
      * Starting the listening netty server, which will be used to accept incoming requests.
@@ -76,8 +86,6 @@ class BackendManager {
      * This method is used to start the backend.
      */
     fun run(port: Int) {
-        this.port = port
-
         this.launchNettyServer(port)
     }
 

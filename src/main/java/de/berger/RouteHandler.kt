@@ -66,7 +66,7 @@ annotation class DELETE(val path: String)
 annotation class HEAD(val path: String)
 annotation class OPTIONS(val path: String)
 
-class RouteHandler {
+class RouteHandler(val manager: BackendManager) {
 
     /**
      * All our registered routes
@@ -117,6 +117,13 @@ class RouteHandler {
 
     fun getResponse(req: Request): Response {
         val route = routes[req.path]
+
+        // Running the middleware
+        val middlewareResponse = this.manager.middleware.preRequest(req)
+
+        if (middlewareResponse.failed)
+            return json(middlewareResponse, middlewareResponse.status)
+
         return route?.invoke(req) ?: Response(HttpResponseStatus.NOT_FOUND, "Not found", ResponseType.TEXT)
     }
 

@@ -22,7 +22,7 @@ class HttpTrafficHandler(private val manager: BackendManager) : ChannelInboundHa
                     response.content().writeBytes(Unpooled.copiedBuffer(it.body, CharsetUtil.UTF_8))
 
                     // Printing the request
-                    println("[REQUEST] ${msg.method} ${msg.uri}")
+                    println("[REQUEST] ${msg.method()} ${msg.uri()}")
 
                     response.headers().add(HttpHeaderNames.CONTENT_TYPE, it.type.contentType)
 
