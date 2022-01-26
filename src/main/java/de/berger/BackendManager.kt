@@ -4,15 +4,15 @@ import de.berger.netty.BackendServerInitializer
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioServerSocketChannel
-import io.netty.handler.codec.http.HttpResponseStatus
 
 data class Test(val name: String, val age: Int)
 
 @Path("/animals")
+@SuppressWarnings("unused")
 class TestListener : Controller() {
 
     @GET("/dog")
-    fun dog(request: Request): Response = json(Test("Dog", 12))
+    fun dog(request: Request, @Query("age") age: Int): Response = json(Test("Dog", age))
 
     @GET("/cat")
     fun cat(request: Request): Response = json(Test("Cat", 69))
@@ -23,7 +23,7 @@ class TestListener : Controller() {
 }
 
 // Bootstrap
-fun main(args: Array<String>) {
+fun main() {
     val backend = BackendManager()
 
     backend.routing.lazyRoute("/") {

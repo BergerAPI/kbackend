@@ -10,7 +10,7 @@ This project is based on Apache Maven. So you can clone the project and open the
 class TestListener : Controller() {
 
     @GET("/dog")
-    fun dog(request: Request): Response = json(Test("Dog", 12))
+    fun dog(request: Request, @Query("age") age: Int): Response = json(Test("Dog", age))
 
     @GET("/cat")
     fun cat(request: Request): Response = json(Test("Cat", 69))

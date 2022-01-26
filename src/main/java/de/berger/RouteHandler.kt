@@ -52,6 +52,11 @@ fun plain(value: String, status: HttpResponseStatus = HttpResponseStatus.OK): Re
 annotation class Path(val value: String)
 
 /**
+ * This can be put on to a parameter in a function to make it required.
+ */
+annotation class Query(val value: String)
+
+/**
  * Listener function annotations to handle routes
  */
 annotation class GET(val path: String)
@@ -144,8 +149,49 @@ class RouteHandler {
             if (it.returnType.name != "de.berger.Response")
                 throw IllegalArgumentException("Route handler must return a Response")
 
+            // Getting all parameters with the Query annotation
+            val queries = it.parameters.filter { param ->
+                param.annotations.any { annotation ->
+                    annotation is Query
+                }
+            }.map { param ->
+                param.annotations.find { annotation ->
+                    annotation is Query
+                }!!.let { annotation ->
+                    Pair((annotation as Query).value, param.type)
+                }
+            }
+
             routes = routes + ((prefix + path) to { req ->
-                it.invoke(controller, req) as Response
+                // if we have queries, we need to add them to the request
+                if (queries.isNotEmpty()) {
+                    val queryMap = queries.associate { mapIt -> mapIt.first to req.queries[mapIt.first] }
+
+                    val paramArray = arrayListOf<Any>()
+
+                    paramArray.add(req)
+
+                    // Every query is a function parameter, so we need to map them to an Object[]
+                    paramArray.addAll(queryMap.map { mapIt ->
+                        // Checking if this is an integer
+                        val notNullValue =
+                            mapIt.value ?: throw IllegalArgumentException("Query parameter ${mapIt.key} is null")
+
+                        if (notNullValue.toIntOrNull() != null)
+                            return@map notNullValue.toInt()
+
+                        if (notNullValue.toDoubleOrNull() != null)
+                            return@map notNullValue.toDouble()
+
+                        if (notNullValue.toBoolean())
+                            return@map notNullValue.toBoolean()
+
+                        return@map notNullValue
+                    })
+
+                    // Invoking with the parameter array
+                    it.invoke(controller, *paramArray.toTypedArray()) as Response
+                } else it.invoke(controller, req) as Response
             })
         }
     }
