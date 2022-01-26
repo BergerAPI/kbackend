@@ -115,6 +115,9 @@ class RouteHandler(val manager: BackendManager) {
         return Request(req.method()!!, path, body, headers, queries)
     }
 
+    /**
+     * This runs the code on the server and returns a response.
+     */
     fun getResponse(req: Request): Response {
         val route = routes[req.path]
 
@@ -173,31 +176,50 @@ class RouteHandler(val manager: BackendManager) {
                 // if we have queries, we need to add them to the request
                 if (queries.isNotEmpty()) {
                     val queryMap = queries.associate { mapIt -> mapIt.first to req.queries[mapIt.first] }
-
                     val paramArray = arrayListOf<Any>()
 
                     paramArray.add(req)
 
+                    val failedQuery = arrayListOf<String>()
+
                     // Every query is a function parameter, so we need to map them to an Object[]
                     paramArray.addAll(queryMap.map { mapIt ->
                         // Checking if this is an integer
-                        val notNullValue =
-                            mapIt.value ?: throw IllegalArgumentException("Query parameter ${mapIt.key} is null")
+                        val notNullValue = mapIt.value
 
-                        if (notNullValue.toIntOrNull() != null)
-                            return@map notNullValue.toInt()
+                        if (notNullValue != null) {
+                            if (notNullValue.toIntOrNull() != null)
+                                return@map notNullValue.toInt()
 
-                        if (notNullValue.toDoubleOrNull() != null)
-                            return@map notNullValue.toDouble()
+                            if (notNullValue.toDoubleOrNull() != null)
+                                return@map notNullValue.toDouble()
 
-                        if (notNullValue.toBoolean())
-                            return@map notNullValue.toBoolean()
+                            if (notNullValue.toBoolean())
+                                return@map notNullValue.toBoolean()
 
-                        return@map notNullValue
+                            return@map notNullValue
+                        }
+
+                        failedQuery.add(mapIt.key)
                     })
 
-                    // Invoking with the parameter array
-                    it.invoke(controller, *paramArray.toTypedArray()) as Response
+                    if (failedQuery.size != 0)
+                        Response(
+                            HttpResponseStatus.BAD_REQUEST,
+                            "Missing query parameters: ${failedQuery.joinToString(", ")}",
+                            ResponseType.TEXT
+                        )
+                    else {
+                        try {
+                            it.invoke(controller, *paramArray.toTypedArray()) as Response
+                        } catch (e: Exception) {
+                            Response(
+                                HttpResponseStatus.INTERNAL_SERVER_ERROR,
+                                "Invocation Error: ${e.message}",
+                                ResponseType.TEXT
+                            )
+                        }
+                    }
                 } else it.invoke(controller, req) as Response
             })
         }

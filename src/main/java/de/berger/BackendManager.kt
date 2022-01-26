@@ -13,7 +13,7 @@ data class Test(val name: String, val age: Int)
 class TestListener : Controller() {
 
     @GET("/dog")
-    fun dog(request: Request, @Query("age") age: Int): Response = json(Test("Dog", age))
+    fun dog(request: Request, @Query("age") age: Int, @Query("name") name: String): Response = json(Test(name, age))
 
     @GET("/cat")
     fun cat(request: Request): Response = json(Test("Cat", 69))
@@ -21,14 +21,6 @@ class TestListener : Controller() {
     @GET("/parrot")
     fun parrot(request: Request): Response = json(Test("Parrot", 1337))
 
-}
-
-/**
- * This middleware always fails, so we can test the middleware handling.
- */
-class AutoFailMiddleware : Middleware {
-    override fun preRequest(request: Request): MiddlewareResponse =
-        MiddlewareResponse(true, "This is a middleware that always fails", HttpResponseStatus.BAD_REQUEST)
 }
 
 // Bootstrap
@@ -40,7 +32,6 @@ fun main() {
     }
 
     backend.routing.initializeController(TestListener())
-    backend.middleware.addMiddleware(AutoFailMiddleware())
 
     backend.run(3000)
 }
