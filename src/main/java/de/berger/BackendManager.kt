@@ -13,8 +13,8 @@ data class Test(val name: String, val age: Int)
 class TestListener : Controller() {
 
     @GET("/dog")
-    fun dog(request: Request, @Query("age") age: Int, @Query("name") name: String): Response = json(
-        Test(name, age), headers = mapOf(
+    fun dog(request: Request, @Query("name") name: String, @Body(Test::class) body: Test): Response = json(
+        Test(name, body.age), headers = mapOf(
             Cookie.createCookie("test", "test")
         )
     )

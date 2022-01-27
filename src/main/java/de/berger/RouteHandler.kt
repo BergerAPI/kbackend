@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import io.netty.handler.codec.http.FullHttpRequest
 import io.netty.handler.codec.http.HttpMethod
 import io.netty.handler.codec.http.HttpResponseStatus
+import kotlin.reflect.KClass
 
 /**
  * A response can return just plain text, or a JSON object.
@@ -89,6 +90,11 @@ annotation class Path(val value: String)
 annotation class Query(val value: String)
 
 /**
+ * This helps us to create json parsed body parameters.
+ */
+annotation class Body(val clazz: KClass<*>)
+
+/**
  * Listener function annotations to handle routes
  */
 annotation class GET(val path: String)
@@ -103,7 +109,7 @@ class RouteHandler(private val manager: BackendManager) {
     /**
      * All our registered routes
      */
-    private var routes: ArrayList<Route> = arrayListOf()
+    private val routes: ArrayList<Route> = arrayListOf()
 
     /**
      * Checking if an annotation is one of ours
@@ -159,7 +165,12 @@ class RouteHandler(private val manager: BackendManager) {
         if (middlewareResponse.failed)
             return json(middlewareResponse, middlewareResponse.status)
 
-        return route?.handler?.invoke(req) ?: Response(HttpResponseStatus.NOT_FOUND, "Not found", ResponseType.TEXT, emptyMap())
+        return route?.handler?.invoke(req) ?: Response(
+            HttpResponseStatus.NOT_FOUND,
+            "Not found",
+            ResponseType.TEXT,
+            emptyMap()
+        )
     }
 
     /**
@@ -200,9 +211,24 @@ class RouteHandler(private val manager: BackendManager) {
                 param.annotations.find { annotation ->
                     annotation is Query
                 }!!.let { annotation ->
-                    Pair((annotation as Query).value, param.type)
+                    (annotation as Query).value to param.type
                 }
             }
+
+            val body = it.parameters.filter { param ->
+                param.annotations.any { annotation ->
+                    annotation is Body
+                }
+            }.map { param ->
+                param.annotations.find { annotation ->
+                    annotation is Body
+                }!!.let { annotation ->
+                    (annotation as Body).clazz to param.type
+                }
+            }
+
+            if (body.size > 1)
+                throw IllegalArgumentException("Route handler can only have one body parameter")
 
             routes.add(Route(method, (prefix + path)) { req ->
                 // if we have queries, we need to add them to the request
@@ -214,26 +240,32 @@ class RouteHandler(private val manager: BackendManager) {
 
                     val failedQuery = arrayListOf<String>()
 
-                    // Every query is a function parameter, so we need to map them to an Object[]
-                    paramArray.addAll(queryMap.map { mapIt ->
-                        // Checking if this is an integer
-                        val notNullValue = mapIt.value
+                    it.parameters.forEachIndexed { index, param ->
+                        if (index != 0) {
+                            val annotation = param.annotations.first()
 
-                        if (notNullValue != null) {
-                            if (notNullValue.toIntOrNull() != null)
-                                return@map notNullValue.toInt()
+                            if (annotation is Query) {
+                                var result: Any? = queryMap[annotation.value]
 
-                            if (notNullValue.toDoubleOrNull() != null)
-                                return@map notNullValue.toDouble()
+                                // Checking if we have this query in the request query map
+                                if (result == null)
+                                    failedQuery.add(annotation.value)
+                                else {
+                                    if (result.toString().toIntOrNull() != null)
+                                        result = result.toString().toInt()
+                                    else if (result.toString().toDoubleOrNull() != null)
+                                        result = result.toString().toDouble()
+                                    else if (result.toString().toBoolean())
+                                        result = result.toString().toBoolean()
 
-                            if (notNullValue.toBoolean())
-                                return@map notNullValue.toBoolean()
-
-                            return@map notNullValue
+                                    paramArray.add(result)
+                                }
+                            } else if (annotation is Body) {
+                                // Parsing the code into the correct type via json
+                                paramArray.add(Gson().fromJson(req.body, annotation.clazz.java))
+                            }
                         }
-
-                        failedQuery.add(mapIt.key)
-                    })
+                    }
 
                     if (failedQuery.size != 0)
                         Response(
