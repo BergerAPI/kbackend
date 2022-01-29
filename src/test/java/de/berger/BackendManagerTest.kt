@@ -20,13 +20,13 @@ internal class BackendManagerTest {
     @Test
     fun checkIfBackendManagerStartsWithLazyRoute() {
         Thread {
-            val backendManager = BackendManager()
+            val app = RestApp()
 
-            backendManager.routing.lazyRoute("/") {
+            app.routing.lazyRoute("/") {
                 plain("test")
             }
 
-            backendManager.run(3000)
+            app.run(3000)
         }.start()
 
         Thread.sleep(1000)

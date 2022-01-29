@@ -6,47 +6,10 @@ import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioServerSocketChannel
 
-data class Test(val name: String, val age: Int)
-
-@Path("/animals")
-@SuppressWarnings("unused")
-class TestListener : Controller() {
-
-    @GET("/dog")
-    fun dog(request: Request, @Query("name") name: String, @Body(Test::class) body: Test): Response = json(
-        Test(name, body.age), headers = mapOf(
-            Cookie.createCookie("test", "test")
-        )
-    )
-
-    @GET("/cat")
-    fun cat(request: Request): Response = redirect("https://google.com/")
-
-    @POST("/parrot")
-    fun parrot(request: Request): Response = json(Test(request.body, 1337))
-
-    @GET("/parrot")
-    fun parrotGet(request: Request): Response = json(Test(request.body, 17))
-
-}
-
-// Bootstrap
-fun main() {
-    val backend = BackendManager()
-
-    backend.routing.lazyRoute("/") {
-        plain("Hello World!")
-    }
-
-    backend.routing.initializeController(TestListener())
-
-    backend.run(3000)
-}
-
 /**
  * The backend manager (main class)
  */
-class BackendManager {
+class RestApp {
 
     /**
      * Handling our routes

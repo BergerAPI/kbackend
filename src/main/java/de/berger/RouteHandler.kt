@@ -104,7 +104,7 @@ annotation class DELETE(val path: String)
 annotation class HEAD(val path: String)
 annotation class OPTIONS(val path: String)
 
-class RouteHandler(private val manager: BackendManager) {
+class RouteHandler(private val manager: RestApp) {
 
     /**
      * All our registered routes
@@ -261,8 +261,11 @@ class RouteHandler(private val manager: BackendManager) {
                                     paramArray.add(result)
                                 }
                             } else if (annotation is Body) {
-                                // Parsing the code into the correct type via json
-                                paramArray.add(Gson().fromJson(req.body, annotation.clazz.java))
+                                try {
+                                    paramArray.add(Gson().fromJson(req.body, annotation.clazz.java))
+                                } catch (e: Exception) {
+                                    return@Route plain("Invalid body", HttpResponseStatus.BAD_REQUEST)
+                                }
                             }
                         }
                     }
