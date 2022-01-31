@@ -1,8 +1,61 @@
 # kbackend
 A simple backend library for creating backends in Kotlin/Java
 
-# Setup
-This project is based on Apache Maven. So you can clone the project and open the cloned directory in IntelliJ. It will take care of all the setup processes for you.
+# Maven Setup
+
+Add this as dependency:
+```
+<dependency>
+    <groupId>de.berger</groupId>
+    <artifactId>kbackend</artifactId>
+    <version>1.0.2</version>
+</dependency>
+```
+
+# Usage
+
+## Lazy Routes
+
+A lazy route is basically a route, which is required to **only** listen to GET request and makes it easier to debug things.
+
+```kotlin
+backend.routing.lazyRoute("/") {
+    return plain("Hello World!")
+}
+```
+
+## Controller
+
+Controller exists, so you can easily create multiple routes as functions and use annotations for information passed by the user like the queries, or the body.
+
+```kotlin
+
+class Controller : Controller() {
+    
+    @GET("/path") // There are also @POST, @PUT, @DELETE, @PATCH, @HEAD, @OPTIONS
+    @Protect("de.berger.MiddleWareTest") // This applies a middleware, which is executed before the route is executed and decides if the route is executed or not.
+    fun myEndpoint(request: Request, 
+                   @Body(MyBodyObject::class) myBody: MyBodyObject, // This is the body of the request, which is parsed by the body parser. It accepts your custom class.
+                   @Query("intQuery") testQuery: Int, // The type of the query is decided by the type of the parameter, so this has the type int
+                   @Query("stringQuery") testQuery: String // and this has the type string
+    ): Response {
+        return plain("Hello World!") // We also have json(myObject, status?) and redirect(route, status?) 
+    }
+    
+}
+```
+
+## Middleware
+
+Middlewares are always executed before the route is executed and decide if the route is executed or not.
+
+```kotlin
+class MyMiddleware : Middleware {
+    override fun preRequest(request: Request): MiddlewareResponse {
+        return MiddlewareResponse(true, "Failed.", HttpResponseStatus.OK)
+    }
+}
+```
 
 # Example
 ```kotlin

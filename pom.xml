@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>de.berger</groupId>
-    <artifactId>KBackend</artifactId>
-    <version>1.0</version>
+    <artifactId>kbackend</artifactId>
+    <version>1.0.2</version>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -47,6 +47,14 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub BergerAPI Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/BergerAPI/kbackend</url>
+        </repository>
+    </distributionManagement>
 
     <build>
         <plugins>
