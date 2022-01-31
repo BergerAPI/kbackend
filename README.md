@@ -4,7 +4,7 @@ A simple backend library for creating backends in Kotlin/Java
 # Maven Setup
 
 Add this as dependency:
-```
+```xml
 <dependency>
     <groupId>de.berger</groupId>
     <artifactId>kbackend</artifactId>
