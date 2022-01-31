@@ -1,6 +1,6 @@
 package de.berger.netty
 
-import de.berger.BackendManager
+import de.berger.RestApp
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelFutureListener
 import io.netty.channel.ChannelHandlerContext
@@ -11,7 +11,7 @@ import io.netty.util.CharsetUtil
 /**
  * This class takes care of all incoming requests.
  */
-class HttpTrafficHandler(private val manager: BackendManager) : ChannelInboundHandlerAdapter() {
+class HttpTrafficHandler(private val manager: RestApp) : ChannelInboundHandlerAdapter() {
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
         if (msg is FullHttpRequest) {

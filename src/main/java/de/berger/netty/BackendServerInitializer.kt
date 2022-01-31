@@ -1,6 +1,6 @@
 package de.berger.netty
 
-import de.berger.BackendManager
+import de.berger.RestApp
 import io.netty.channel.ChannelInitializer
 import io.netty.channel.socket.SocketChannel
 import io.netty.handler.codec.http.HttpContentCompressor
@@ -10,7 +10,7 @@ import io.netty.handler.codec.http.HttpServerCodec
 /**
  * Initializes the channel and adds properties to the pipeline.
  */
-class BackendServerInitializer(private val manager: BackendManager) : ChannelInitializer<SocketChannel>() {
+class BackendServerInitializer(private val manager: RestApp) : ChannelInitializer<SocketChannel>() {
     override fun initChannel(channel: SocketChannel) {
         val pipeline = channel.pipeline()
 
