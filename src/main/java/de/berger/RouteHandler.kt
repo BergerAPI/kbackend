@@ -231,8 +231,21 @@ class RouteHandler(private val manager: RestApp) {
                 throw IllegalArgumentException("Route handler can only have one body parameter")
 
             routes.add(Route(method, (prefix + path)) { req ->
+                // Running the specific middleware via the annotation
+                it.annotations.find { annotation ->
+                    annotation is Protect
+                }?.let { annotation ->
+                    // Getting the class by the annotation path ("de.berger.MyMiddleware" for example)
+                    val clazz = Class.forName((annotation as Protect).path)
+                    val instance = clazz.newInstance() as Middleware
+                    val middlewareResponse = instance.preRequest(req)
+
+                    if (middlewareResponse.failed)
+                        return@Route json(middlewareResponse, middlewareResponse.status)
+                }
+
                 // if we have queries, we need to add them to the request
-                if (queries.isNotEmpty()) {
+                if (queries.isNotEmpty() && it.annotations.find{ annotation -> annotation is Body } != null) {
                     val queryMap = queries.associate { mapIt -> mapIt.first to req.queries[mapIt.first] }
                     val paramArray = arrayListOf<Any>()
 

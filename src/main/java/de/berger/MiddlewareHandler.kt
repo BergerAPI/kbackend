@@ -15,6 +15,11 @@ interface Middleware {
 }
 
 /**
+ * An annotation for a middleware that should only protect one endpoint.
+ */
+annotation class Protect(val path: String)
+
+/**
  * This handler takes care about the all middlewares.
  */
 class MiddlewareHandler {
@@ -31,21 +36,13 @@ class MiddlewareHandler {
      * This method will be called before the request is executed.
      */
     fun preRequest(request: Request): MiddlewareResponse {
-        var failed = false
-        var response = ""
-        var status = HttpResponseStatus.OK
-
         for (middleware in middlewares) {
             val middlewareResponse = middleware.preRequest(request)
 
-            if (middlewareResponse.failed) {
-                failed = true
-                response = middlewareResponse.response
-                status = middlewareResponse.status
-                break
-            }
+            if (middlewareResponse.failed)
+                return MiddlewareResponse(true, middlewareResponse.response, middlewareResponse.status)
         }
 
-        return MiddlewareResponse(failed, response, status)
+        return MiddlewareResponse(false, "", HttpResponseStatus.OK)
     }
 }
